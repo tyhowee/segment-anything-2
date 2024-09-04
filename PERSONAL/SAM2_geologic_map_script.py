@@ -4,6 +4,7 @@ import os
 # if using Apple MPS, fall back to CPU for unsupported ops
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import numpy as np
+from tkinter import Tk, filedialog
 import torch
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
@@ -85,13 +86,15 @@ def show_masks(image, masks, scores, point_coords=None, box_coords=None, input_l
 
 #%% LOAD/PREVIEW IMAGE
 
-image = Image.open('images/map.png')
-image = np.array(image.convert("RGB"))
+# Hide the main tkinter window
+Tk().withdraw()
 
-plt.figure(figsize=(10, 10))
-plt.imshow(image)
-plt.axis('on')
-plt.show()
+# Open a file dialog to select the image
+file_path = filedialog.askopenfilename(title="Select an image file")
+
+# Load and convert the image
+image = Image.open(file_path)
+image = np.array(image.convert("RGB"))
 
 
 #%% LOAD SAM-2
@@ -159,15 +162,15 @@ plt.show()
 input_points = np.array(points).reshape(number_points, 1, 2)  # Reshape to Bx1x2 format
 input_labels = np.array(labels).reshape(number_points, 1)     # Reshape to Bx1 format
 
-#%% SHOW POINT(S)
+#%% SHOW POINT(S) - DISABLED
 
-plt.figure(figsize=(10, 10))
-plt.imshow(image)
-show_points(input_points, input_labels, plt.gca())
-plt.axis('on')
-plt.show()  
+#plt.figure(figsize=(10, 10))
+#plt.imshow(image)
+#show_points(input_points, input_labels, plt.gca())
+#plt.axis('on')
+#plt.show()  
 
-print(predictor._features["image_embed"].shape, predictor._features["image_embed"][-1].shape)
+#print(predictor._features["image_embed"].shape, predictor._features["image_embed"][-1].shape)
 
 #%% PROCESS MULTIPLE SEPARATE POINTS
 
