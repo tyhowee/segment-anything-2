@@ -10,6 +10,8 @@ import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 from PIL import Image
+import rasterio
+from rasterio.transform import from_origin
 
 #%%SELECT COMPUTATION DEVICE
 
@@ -95,6 +97,13 @@ file_path = filedialog.askopenfilename(title="Select an image file")
 # Load and convert the image
 image = Image.open(file_path)
 image = np.array(image.convert("RGB"))
+
+# Prompt the user to select the output file location
+output_file_path = filedialog.asksaveasfilename(
+    defaultextension=".tif",
+    filetypes=[("TIFF files", "*.tif"), ("All files", "*.*")],
+    title="Select output file location"
+)
 
 
 #%% LOAD SAM-2
@@ -201,3 +210,22 @@ for points, labels, masks_per_point in zip(image_points, image_labels, image_mas
 plt.axis('off')
 plt.show()  # Display the plot after all masks and points are plotted
 
+
+#%% EXPORT MASKS
+
+# Define the dimensions and metadata for the output raster
+height, width = image.shape[:2]
+transform = from_origin(0, 0, 1, 1)  # Adjust to match the georeferencing
+
+# Create a grayscale output array for the masks
+grayscale_masks = np.zeros((height, width), dtype=np.uint8)
+
+# Assign unique grayscale values to each mask (values from 1 to number_points)
+for i in range(number_points):
+    grayscale_value = int((i + 1) * (255 / (number_points + 1)))  # Calculate unique grayscale value
+    grayscale_masks[normalized_masks[i, 0] > 0] = grayscale_value
+
+# Write the grayscale masks to the output file
+with rasterio.open(output_file_path, 'w', driver='GTiff', height=height, width=width,
+                   count=1, dtype='uint8', transform=transform) as dst:
+    dst.write(grayscale_masks, 1)
