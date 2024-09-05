@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import rasterio
 from rasterio.transform import from_origin
+from osgeo import gdal
+from osgeo import ogr
 
 #%%SELECT COMPUTATION DEVICE
 
@@ -98,7 +100,7 @@ file_path = filedialog.askopenfilename(title="Select an image file")
 image = Image.open(file_path)
 image = np.array(image.convert("RGB"))
 
-# Prompt the user to select the output file location
+# Prompt the user to select the output raster file location
 output_file_path = filedialog.asksaveasfilename(
     defaultextension=".tif",
     filetypes=[("TIFF files", "*.tif"), ("All files", "*.*")],
@@ -199,6 +201,7 @@ print(image_masks.shape)  # (batch_size) x (num_predicted_masks_per_input) x H x
 
 #%% DISPLAY MASKS
 plt.figure(figsize=(10, 10))
+plt.title("Mask Output - close window to continue")
 plt.imshow(image)
 
 # Iterate over each set of points, labels, and masks
@@ -212,6 +215,8 @@ plt.show()  # Display the plot after all masks and points are plotted
 
 
 #%% EXPORT MASKS
+
+normalized_masks = (image_masks * 255).astype(np.uint8)  # Convert binary masks to 8-bit format
 
 # Define the dimensions and metadata for the output raster
 height, width = image.shape[:2]
@@ -229,3 +234,42 @@ for i in range(number_points):
 with rasterio.open(output_file_path, 'w', driver='GTiff', height=height, width=width,
                    count=1, dtype='uint8', transform=transform) as dst:
     dst.write(grayscale_masks, 1)
+
+#%% POLYGONIZE
+
+os.environ['GDAL_DATA'] = r"C:\Users\TyHow\anaconda3\envs\conda_env\Library\share\gdal"
+
+
+# Write the grayscale masks to the output file
+with rasterio.open(output_file_path, 'w', driver='GTiff', height=height, width=width,
+                   count=1, dtype='uint8', transform=transform) as dst:
+    dst.write(grayscale_masks, 1)
+
+# Extract the directory from the output raster file path
+output_dir = os.path.dirname(output_file_path)
+
+# Define the output vector file path in the same directory
+output_vector_path = os.path.join(output_dir, "output_vector.shp")
+
+# Run GDAL Polygonize
+src_ds = gdal.Open(output_file_path)
+src_band = src_ds.GetRasterBand(1)
+
+# Create the output vector file
+driver = ogr.GetDriverByName("ESRI Shapefile")
+out_ds = driver.CreateDataSource(output_vector_path)
+out_layer = out_ds.CreateLayer("polygonized", srs=None)
+
+# Add an attribute to the output layer
+field = ogr.FieldDefn("DN", ogr.OFTInteger)
+out_layer.CreateField(field)
+
+# Polygonize
+gdal.Polygonize(src_band, None, out_layer, 0, [], callback=None)
+
+# Clean up
+out_ds = None
+src_ds = None
+
+
+# %%
