@@ -4,7 +4,6 @@ import subprocess
 import os
 import platform
 
-
 # Set environment variables for GDAL
 def set_gdal_env_vars():
     # Check if GDAL_DATA and PATH are already set
@@ -28,6 +27,16 @@ def set_gdal_env_vars():
 
 set_gdal_env_vars()
 
+def install_tkinter():
+    """Install the correct version of Tcl/Tk using Conda."""
+    try:
+        print("Checking and installing the correct version of Tcl/Tk...")
+        subprocess.check_call(['conda', 'install', '-c', 'conda-forge', 'tk=8.6.13', '-y'])
+        print("Tcl/Tk installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install Tcl/Tk: {e}")
+
+install_tkinter()
 
 def install_and_import(package, import_name=None, use_conda=False):
     """
@@ -84,7 +93,6 @@ except ImportError:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt5"])
     print("PyQt5 installed successfully.")
     globals()["PyQt5"] = __import__("PyQt5")
-
 
 
 #%%IMPORT LIBRARIES------------------------------------------------------------------------------------------------------------------------------------
