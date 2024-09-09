@@ -1,4 +1,93 @@
-#%%IMPORT LIBRARIES
+#%% INSTALL DEPENDENCIES-------------------------------------------------------------------------
+import sys
+import subprocess
+import os
+import platform
+
+
+# Set environment variables for GDAL
+def set_gdal_env_vars():
+    # Check if GDAL_DATA and PATH are already set
+    if "GDAL_DATA" not in os.environ or not os.environ["GDAL_DATA"]:
+        # Determine the base path for Anaconda or Miniconda
+        conda_base = os.environ.get("CONDA_PREFIX", os.path.dirname(sys.executable))
+        gdal_data_path = os.path.join(conda_base, "Library", "share", "gdal")
+        
+        if os.path.exists(gdal_data_path):
+            os.environ["GDAL_DATA"] = gdal_data_path
+            print("Set GDAL_DATA to", os.environ["GDAL_DATA"])
+        else:
+            print("Could not find the GDAL data path. Make sure GDAL is installed properly.")
+
+    if "condabin" not in os.environ["PATH"]:
+        conda_bin_path = os.path.join(os.path.dirname(conda_base), "condabin")
+        os.environ["PATH"] += os.pathsep + conda_bin_path
+        print("Added", conda_bin_path, "to PATH")
+    else:
+        print("PATH already includes condabin")
+
+set_gdal_env_vars()
+
+
+def install_and_import(package, import_name=None, use_conda=False):
+    """
+    Install the package if it's not already installed, and then import it.
+    
+    Args:
+        package (str): The package name to be installed and imported.
+        import_name (str): The actual module name to import if different from the package name.
+        use_conda (bool): If True, install the package via Conda instead of pip.
+    """
+    try:
+        # Use the provided import name or fallback to the package name
+        if import_name:
+            __import__(import_name)
+        else:
+            __import__(package)
+    except ImportError:
+        print(f"Package '{package}' not found. Installing...")
+        if use_conda:
+            subprocess.check_call(['conda', 'install', '-c', 'conda-forge', package, '-y'])
+        else:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        print(f"'{package}' installed successfully.")
+        # Import again after installation
+        globals()[import_name or package] = __import__(import_name or package)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# List of packages needed for the SAM2 script
+required_packages = {
+    "numpy": "numpy",
+    "tkinter": None,  # tkinter is usually pre-installed with Python
+    "torch": "torch",
+    "matplotlib": "matplotlib",
+    "Pillow": "PIL",  # The actual import name for the Pillow library is PIL
+    "rasterio": "rasterio",
+    "gdal": "osgeo.gdal",
+    "ogr": "osgeo.ogr"
+}
+
+# Check and install packages
+for package, import_name in required_packages.items():
+    if package in ['gdal', 'ogr']:
+        # Use Conda for GDAL and its related packages
+        install_and_import(package, import_name, use_conda=True)
+    else:
+        install_and_import(package, import_name)
+
+# Check and install a Qt binding for matplotlib's QtAgg backend
+try:
+    import PyQt5  # You can choose PyQt6, PySide2, or PySide6 as needed
+except ImportError:
+    print("Required Qt binding for matplotlib not found. Installing PyQt5...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt5"])
+    print("PyQt5 installed successfully.")
+    globals()["PyQt5"] = __import__("PyQt5")
+
+
+
+#%%IMPORT LIBRARIES------------------------------------------------------------------------------------------------------------------------------------
 
 import os
 # if using Apple MPS, fall back to CPU for unsupported ops
